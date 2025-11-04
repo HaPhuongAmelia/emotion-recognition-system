@@ -1,0 +1,22 @@
+{
+  "name": "emotion-recognition-system",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "description": "",
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0",
+    "js-tokens": "^9.0.1",
+    "loose-envify": "^1.4.0",
+    "object-assign": "^4.1.1",
+    "prop-types": "^15.8.1",
+    "react": "^19.2.0",
+    "react-is": "^19.2.0"
+  }
+}
