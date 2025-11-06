@@ -12,6 +12,8 @@
   "description": "",
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
+    "antd": "^5.28.0",
+    "axios": "^1.13.2",
     "js-tokens": "^9.0.1",
     "loose-envify": "^1.4.0",
     "object-assign": "^4.1.1",
@@ -21,6 +23,7 @@
     "react-router-dom": "^7.9.5"
   },
   "devDependencies": {
+    "@types/axios": "^0.9.36",
     "@types/react-router-dom": "^5.3.3"
   }
 }
