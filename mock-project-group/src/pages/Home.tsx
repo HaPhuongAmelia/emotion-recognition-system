@@ -217,7 +217,11 @@ const Home: React.FC = () => {
   return (
     <>
       <div className="bg-gray-100 min-h-screen">
-        <Header />
+        <Header simulateBackend={false} onToggleSimulate={function (): void {
+                  throw new Error("Function not implemented.");
+              } } onReset={function (): void {
+                  throw new Error("Function not implemented.");
+              } } />
         <div className="container mx-auto px-4 mt-6">
           <div className="mb-4">
             <h1 className="text-2xl font-bold">Dashboard nhận diện cảm xúc</h1>
@@ -384,7 +388,7 @@ const Home: React.FC = () => {
                       className="cursor-pointer"
                     >
                       <div className="flex gap-3">
-                        <div className="w-28 h-20 bg-gray-50 flex-shrink-0 rounded overflow-hidden flex items-center justify-center">
+                        <div className="w-28 h-20 bg-gray-50 shrink-0 rounded overflow-hidden flex items-center justify-center">
                           {r.imageUrl ? (
                             <img src={r.imageUrl} alt={`face-${r.id}`} className="w-full h-full object-cover" />
                           ) : (

@@ -23,7 +23,7 @@ import AdminUserDetail from './pages/Admin/UserDetail'
 
 // ==== Hệ thống / Auth ====
 import NotFound from './pages/404'
-import { AuthProvider } from './contexts/AuthContex'
+import { AuthProvider } from './contexts/AuthContext'
 import { LoginModalProvider } from './contexts/LoginModalContext'
 import PrivateRoute from './contexts/PrivateRoute'
 

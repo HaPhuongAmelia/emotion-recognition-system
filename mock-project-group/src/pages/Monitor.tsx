@@ -151,7 +151,11 @@ export default function Monitor() {
   if (loading) {
     return (
       <div>
-        <Header />
+        <Header simulateBackend={false} onToggleSimulate={function (): void {
+          throw new Error('Function not implemented.');
+        } } onReset={function (): void {
+          throw new Error('Function not implemented.');
+        } } />
         <div className="flex justify-center mt-12">
           <Spin size="large" />
         </div>
@@ -162,7 +166,11 @@ export default function Monitor() {
 
   return (
     <div>
-      <Header />
+      <Header simulateBackend={false} onToggleSimulate={function (): void {
+        throw new Error('Function not implemented.');
+      } } onReset={function (): void {
+        throw new Error('Function not implemented.');
+      } } />
 
       <div className="w-full bg-[#F5F5FA] py-8">
         <div className="max-w-[1200px] mx-auto px-4">

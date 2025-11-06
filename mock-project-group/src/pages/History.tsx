@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // History.tsx
 import React, { useEffect, useState } from 'react';
 import { Card, List, Button, Input, Spin, message, Row, Col, Tag, Space, Pagination } from 'antd';
@@ -44,7 +45,7 @@ export default function History() {
 
   // Load sessions (or demo data)
   useEffect(() => {
-    let mounted = true;
+    const mounted = true;
     const load = async () => {
       setLoading(true);
       try {
@@ -151,7 +152,11 @@ export default function History() {
 
   return (
     <div>
-      <Header />
+      <Header simulateBackend={false} onToggleSimulate={function (): void {
+        throw new Error('Function not implemented.');
+      } } onReset={function (): void {
+        throw new Error('Function not implemented.');
+      } } />
       <div className="w-full bg-[#F5F5FA] py-8">
         <div className="max-w-[1200px] mx-auto px-4">
           <Card>

@@ -1,10 +1,21 @@
-// Profile.tsx
-import React from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
-import Header from '../../components/header';
-import Footer from '../../components/footer';
-import { useAuth } from '../../contexts/AuthContext';
-import { useLoginModal } from '../../contexts/LoginModalContext';
+import React from "react";
+import { Outlet, useNavigate } from "react-router-dom";
+import { Card, Layout, Avatar, Typography, Space, Button, Divider, Menu } from "antd";
+import {
+  UserOutlined,
+  HistoryOutlined,
+  BellOutlined,
+  LoginOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
+
+import Header from "../../components/header";
+import Footer from "../../components/footer";
+import { useAuth } from "../../contexts/AuthContext";
+import { useLoginModal } from "../../contexts/LoginModalContext";
+
+const { Content, Sider } = Layout;
+const { Title, Text } = Typography;
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
@@ -12,119 +23,183 @@ const Profile: React.FC = () => {
   const navigate = useNavigate();
 
   const handleLoginPrompt = () => {
-    openLogin('login');
+    openLogin("login");
   };
 
+  const menuItems = [
+    {
+      key: "profile",
+      label: "Hồ sơ",
+      icon: <UserOutlined />,
+      onClick: () => navigate("/profile/my-profile"),
+    },
+    {
+      key: "history",
+      label: "Lịch sử",
+      icon: <HistoryOutlined />,
+      onClick: () => navigate("/profile/my-history"),
+    },
+    {
+      key: "notifications",
+      label: "Thông báo",
+      icon: <BellOutlined />,
+      onClick: () => navigate("/profile/my-notification"),
+    },
+  ];
+
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <Header />
+    <Layout style={{ minHeight: "100vh", background: "#f9fafb" }}>
+      <Header
+        simulateBackend={false}
+        onToggleSimulate={() => {}}
+        onReset={() => {}}
+      />
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left: profile card + quick actions */}
-          <aside className="col-span-1">
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-lg bg-indigo-100 flex items-center justify-center text-2xl font-semibold text-indigo-700">
-                  {user?.name?.[0]?.toUpperCase() || 'U'}
-                </div>
+      <Content style={{ padding: "24px", maxWidth: 1200, margin: "0 auto" }}>
+        <Layout hasSider style={{ background: "transparent" }}>
+          {/* Sidebar */}
+          <Sider
+            width={280}
+            theme="light"
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+              marginRight: 24,
+              padding: "16px",
+              height: "fit-content",
+            }}
+          >
+            <Space align="center" size="middle" style={{ width: "100%" }}>
+              <Avatar
+                size={64}
+                style={{
+                  backgroundColor: "#6366F1",
+                  fontSize: 26,
+                  fontWeight: 600,
+                }}
+              >
+                {user?.name?.[0]?.toUpperCase() || "U"}
+              </Avatar>
+              <div>
+                <Title level={5} style={{ margin: 0 }}>
+                  {user?.name || "Khách"}
+                </Title>
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  {user?.email || "Chưa đăng nhập"}
+                </Text>
+              </div>
+            </Space>
+
+            <Divider style={{ margin: "16px 0" }} />
+
+            {!user ? (
+              <Button
+                type="primary"
+                block
+                icon={<LoginOutlined />}
+                onClick={handleLoginPrompt}
+              >
+                Đăng nhập / Đăng ký
+              </Button>
+            ) : (
+              <>
+                <Menu
+                  mode="inline"
+                  items={menuItems}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    marginTop: 8,
+                  }}
+                />
+              </>
+            )}
+
+            <Divider style={{ margin: "16px 0" }} />
+
+            <Card
+              size="small"
+              title={<Text strong>Tóm tắt nhanh</Text>}
+              bordered={false}
+              style={{
+                background: "#fafafa",
+                borderRadius: 8,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <Text>Số phiên gần đây</Text>
+                <Text strong>—</Text>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <Text>Tổng phát hiện (cache)</Text>
+                <Text strong>—</Text>
+              </div>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                Dữ liệu demo — cần backend thật để hiển thị.
+              </Text>
+            </Card>
+          </Sider>
+
+          {/* Main content */}
+          <Content>
+            <Card
+              style={{
+                borderRadius: 12,
+                boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 16,
+                }}
+              >
                 <div>
-                  <div className="text-lg font-semibold text-gray-800">{user?.name || 'Khách'}</div>
-                  <div className="text-sm text-gray-500">{user?.email || 'Chưa đăng nhập'}</div>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                {!user ? (
-                  <button
-                    onClick={handleLoginPrompt}
-                    className="w-full px-3 py-2 bg-indigo-600 text-white rounded-lg"
-                  >
-                    Đăng nhập / Đăng ký
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => navigate('/profile/my-profile')}
-                      className="w-full px-3 py-2 bg-gray-100 text-gray-800 rounded-lg"
-                    >
-                      Chỉnh sửa thông tin
-                    </button>
-                    <button
-                      onClick={() => navigate('/profile/my-history')}
-                      className="w-full px-3 py-2 bg-gray-100 text-gray-800 rounded-lg"
-                    >
-                      Xem lịch sử phiên
-                    </button>
-                    <button
-                      onClick={() => navigate('/profile/my-notification')}
-                      className="w-full px-3 py-2 bg-gray-100 text-gray-800 rounded-lg"
-                    >
-                      Thông báo
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-4 mt-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Tóm tắt nhanh</h4>
-              <div className="text-sm text-gray-600 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span>Số phiên gần đây</span>
-                  <span className="font-semibold">—</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Tổng phát hiện (cache)</span>
-                  <span className="font-semibold">—</span>
-                </div>
-                <div className="text-xs text-gray-400">Dữ liệu demo — kết nối backend để hiển thị số liệu thật.</div>
-              </div>
-            </div>
-          </aside>
-
-          {/* Right: main content area (Outlet) */}
-          <section className="col-span-1 lg:col-span-3">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-800">Quản lý tài khoản</h2>
-                  <p className="text-sm text-gray-500">Quản lý thông tin cá nhân, lịch sử giám sát và thông báo.</p>
+                  <Title level={4} style={{ marginBottom: 0 }}>
+                    Quản lý tài khoản
+                  </Title>
+                  <Text type="secondary">
+                    Quản lý thông tin cá nhân, lịch sử giám sát và thông báo.
+                  </Text>
                 </div>
 
-                <nav className="flex items-center gap-2">
-                  <Link
-                    to="/profile/my-profile"
-                    className="text-sm px-3 py-2 rounded-lg hover:bg-gray-100"
+                <Space>
+                  <Button
+                    type="text"
+                    icon={<EditOutlined />}
+                    onClick={() => navigate("/profile/my-profile")}
                   >
                     Hồ sơ
-                  </Link>
-                  <Link
-                    to="/profile/my-history"
-                    className="text-sm px-3 py-2 rounded-lg hover:bg-gray-100"
+                  </Button>
+                  <Button
+                    type="text"
+                    icon={<HistoryOutlined />}
+                    onClick={() => navigate("/profile/my-history")}
                   >
                     Lịch sử
-                  </Link>
-                  <Link
-                    to="/profile/my-notification"
-                    className="text-sm px-3 py-2 rounded-lg hover:bg-gray-100"
+                  </Button>
+                  <Button
+                    type="text"
+                    icon={<BellOutlined />}
+                    onClick={() => navigate("/profile/my-notification")}
                   >
                     Thông báo
-                  </Link>
-                </nav>
+                  </Button>
+                </Space>
               </div>
 
-              {/* Outlet sẽ render các trang con (MyProfile, MyHistory, MyNotification) */}
-              <div className="mt-4">
-                <Outlet />
-              </div>
-            </div>
-          </section>
-        </div>
-      </main>
+              <Outlet />
+            </Card>
+          </Content>
+        </Layout>
+      </Content>
 
       <Footer />
-    </div>
+    </Layout>
   );
 };
 
