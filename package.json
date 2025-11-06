@@ -17,6 +17,10 @@
     "object-assign": "^4.1.1",
     "prop-types": "^15.8.1",
     "react": "^19.2.0",
-    "react-is": "^19.2.0"
+    "react-is": "^19.2.0",
+    "react-router-dom": "^7.9.5"
+  },
+  "devDependencies": {
+    "@types/react-router-dom": "^5.3.3"
   }
 }

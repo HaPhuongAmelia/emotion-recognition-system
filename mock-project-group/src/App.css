@@ -1,42 +1,81 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+@import "tailwindcss";
+@import "slick-carousel/slick/slick.css";
+@import "slick-carousel/slick/slick-theme.css";
+.slick-prev:before, .slick-next:before {
+    display: none;
 }
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
+@layer utilities {
+  /* Chỉ ghi đè grid trên mobile */
+  .similar-books .grid {
+    @apply grid-cols-3 gap-2 md:grid-cols-4;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+@layer utilities {
+  @media (max-width: 1024px) {
+    .topdeal-wrapper .grid {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      overflow-x: auto !important;
+    }
+    .topdeal-wrapper .grid > * {
+      flex: 0 0 33.3333% !important; /* đúng 3 item trên 1 hàng */
+      max-width: 33.3333% !important;
+      min-width: unset !important; /* bỏ min-width do grid tạo ra */
+    }
   }
 }
+/* Ẩn arrow prev */
 
-.card {
-  padding: 2em;
+
+/* Nút next */
+.ant-carousel .slick-next {
+  right: 10px; /* chỉnh vị trí */
+  z-index: 10;
+  background: white !important;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
 }
 
-.read-the-docs {
-  color: #888;
+
+/* Thay đổi icon mũi tên */
+.ant-carousel .slick-next::before {
+  content: "›";
+  color: #007bff;   /* xanh */
+  font-size: 28px;
+  font-weight: bold;
+  opacity: 1;
 }
+
+
+/* Nếu bạn muốn custom theo kiểu "xoay" như trong DevTools */
+.ant-carousel .slick-next::after {
+  transform: rotate(135deg);
+  margin-top: 12px;
+  margin-left: 8px;
+  color: black;
+}
+.ant-carousel .slick-dots {
+  bottom: -20px; /* đẩy xuống dưới */
+}
+
+/* Mặc định (không active) */
+.ant-carousel .slick-dots li button {
+  width: 30px !important;
+  height: 4px !important;
+  border-radius: 2px !important;
+  background: #d1d5db !important; /* xám nhạt */
+  opacity: 1 !important;
+}
+
+/* Đang active */
+.ant-carousel .slick-dots li.slick-active button {
+  background-color: #1677ff !important; /* xanh */
+  color: #1677ff !important;;
+}
+
