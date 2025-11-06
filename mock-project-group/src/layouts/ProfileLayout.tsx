@@ -42,7 +42,11 @@ const ProfileLayout: React.FC = () => {
 
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col">
-      <Header />
+      <Header simulateBackend={false} onToggleSimulate={function (): void {
+              throw new Error("Function not implemented.");
+          } } onReset={function (): void {
+              throw new Error("Function not implemented.");
+          } } />
       <div className="max-w-[1440px] mx-auto p-4 w-full">
         <Breadcrumb items={breadcrumbItems} className="text-sm text-gray-600 mb-4" />
 
