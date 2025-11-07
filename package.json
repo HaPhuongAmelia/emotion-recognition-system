@@ -16,6 +16,7 @@
     "axios": "^1.13.2",
     "chart.js": "^4.5.1",
     "js-tokens": "^9.0.1",
+    "jwt-decode": "^4.0.0",
     "loose-envify": "^1.4.0",
     "object-assign": "^4.1.1",
     "prop-types": "^15.8.1",
@@ -29,6 +30,7 @@
   "devDependencies": {
     "@types/axios": "^0.9.36",
     "@types/chart.js": "^2.9.41",
+    "@types/jwt-decode": "^2.2.1",
     "@types/react-chartjs-2": "^2.0.2",
     "@types/react-countup": "^4.3.0",
     "@types/react-router-dom": "^5.3.3"

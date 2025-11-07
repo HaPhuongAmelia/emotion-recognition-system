@@ -6,7 +6,11 @@ const NotFound: React.FC = () => {
     const navigate = useNavigate();
     return (
         <div>
-            <Header />
+            <Header simulateBackend={false} onToggleSimulate={function (): void {
+                throw new Error('Function not implemented.');
+            } } onReset={function (): void {
+                throw new Error('Function not implemented.');
+            } } />
             <div className="min-h-[60vh] flex items-center justify-center px-4 mb-8">
                 <div className="text-center max-w-xl">
                     <h1 className="text-7xl font-extrabold text-blue-600">404</h1>

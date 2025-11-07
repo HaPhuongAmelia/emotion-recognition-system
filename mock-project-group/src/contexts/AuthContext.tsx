@@ -1,145 +1,341 @@
+/* eslint-disable no-empty */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// AuthContext.tsx
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react-refresh/only-export-components */
 import React, {
   createContext,
-  useState,
+  useCallback,
   useEffect,
-  ReactNode,
+  useRef,
+  useState,
+  type ReactNode,
   useContext,
 } from "react";
-import { onUnauthorized, offUnauthorized } from "../lib/authEvents";
 import { jwtDecode } from "jwt-decode";
+import axios from "axios";
+import { onUnauthorized, offUnauthorized } from "../lib/authEvents";
 
-interface User {
-  id: number;
-  email: string;
-  role: string;
+/**
+ * AuthContext for Emotion Recognition System (ERS)
+ * - login accepts { user?: User | null, token: string, refreshToken?: string | null }
+ * - stores token, refreshToken, user in localStorage
+ * - decodes token to derive user if user not provided
+ * - auto-logout on token expiry, optional refresh before expiry
+ */
+
+/* ---------------- Types ---------------- */
+export interface User {
+  id?: string | number;
+  email?: string;
+  role?: string | string[];
   firstName?: string;
   lastName?: string;
-  name?: string; // ✅ thêm trường name để Profile.tsx sử dụng
+  name?: string;
   phoneNumber?: string;
   address?: string;
+  [k: string]: any;
 }
 
-interface AuthContextType {
+interface LoginPayload {
+  user?: User | null;
+  token: string;
+  refreshToken?: string | null;
+}
+
+export interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (user: User, token: string) => void;
-  logout: () => void;
+  refreshToken: string | null;
+  isAuthenticated: boolean;
+  login: (payload: LoginPayload) => void;
+  logout: (opts?: { silent?: boolean }) => void;
+  refreshAuthToken: () => Promise<boolean>;
+  isAdmin: () => boolean;
+  hasRole: (role: string) => boolean;
 }
 
-interface DecodedToken {
-  exp: number; // Unix timestamp cho thời gian hết hạn
-  [key: string]: any;
-}
+/* ------------- Helpers ------------- */
+type DecodedToken = {
+  exp?: number;
+  iat?: number;
+  sub?: string | number;
+  email?: string;
+  role?: string | string[];
+  user?: any;
+  [k: string]: any;
+};
 
-export const AuthContext = createContext<AuthContextType>({
-  user: null,
-  token: null,
-  login: () => {},
-  logout: () => {},
-});
+const tryParseJSON = (s: string | null) => {
+  if (!s) return null;
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
+};
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+const parseTokenToUser = (t: string | null): User | null => {
+  if (!t) return null;
+  try {
+    const decoded = jwtDecode<DecodedToken>(t);
+    const u: User = {
+      id: decoded.sub ?? decoded.user?.id,
+      email: decoded.email ?? decoded.user?.email,
+      role: decoded.role ?? decoded.user?.role,
+      ...(decoded.user ?? {}),
+    };
+    u.name = u.name ?? ([u.firstName, u.lastName].filter(Boolean).join(" ").trim() || undefined);
+    return u;
+  } catch (err) {
+    console.warn("Failed to decode token:", err);
+    return null;
+  }
+};
 
-  // ✅ Khi user có firstName + lastName, tự động gộp thành name
-  useEffect(() => {
-    if (user && (!user.name || user.name.trim() === "")) {
-      const combinedName = [user.firstName, user.lastName]
-        .filter(Boolean)
-        .join(" ")
-        .trim();
-      if (combinedName) {
-        setUser((prev) => ({ ...prev!, name: combinedName }));
-      }
+/* ------------- Context ------------- */
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(() => {
+    const raw = tryParseJSON(localStorage.getItem("user"));
+    return raw ?? null;
+  });
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem("token") ?? null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(() => localStorage.getItem("refreshToken") ?? null);
+
+  const logoutTimerRef = useRef<number | null>(null);
+  const refreshTimerRef = useRef<number | null>(null);
+
+  const clearTimers = useCallback(() => {
+    if (logoutTimerRef.current != null) {
+      window.clearTimeout(logoutTimerRef.current);
+      logoutTimerRef.current = null;
     }
-  }, [user]);
-
-  // Load dữ liệu từ localStorage khi refresh
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    const savedToken = localStorage.getItem("token");
-    if (savedUser && savedToken) {
-      const parsedUser = JSON.parse(savedUser);
-      // Gộp tên nếu cần
-      const name =
-        parsedUser.name ||
-        [parsedUser.firstName, parsedUser.lastName].filter(Boolean).join(" ");
-      setUser({ ...parsedUser, name });
-      setToken(savedToken);
+    if (refreshTimerRef.current != null) {
+      window.clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
     }
   }, []);
 
-  // Kiểm tra và xử lý hết hạn token
-  useEffect(() => {
-    const checkTokenExpiration = () => {
-      if (token) {
-        try {
-          const decoded: DecodedToken = jwtDecode(token);
-          const currentTime = Date.now() / 1000;
-          if (decoded.exp < currentTime) {
-            logout(); // Hết hạn → logout
-          } else {
-            const timeUntilExpiration = (decoded.exp - currentTime) * 1000;
-            const interval = setInterval(() => {
-              const now = Date.now() / 1000;
-              if (decoded.exp < now) {
-                logout();
-                clearInterval(interval);
-              }
-            }, 60000);
-            return () => clearInterval(interval);
-          }
-        } catch (error) {
-          console.error("Lỗi khi decode token:", error);
-          logout();
+  // schedule auto-logout at token expiry and auto-refresh 30s before expiry (if refreshToken available)
+  const scheduleTokenHandlers = useCallback(
+    (t: string | null) => {
+      clearTimers();
+      if (!t) return;
+      try {
+        const decoded = jwtDecode<DecodedToken>(t);
+        if (!decoded?.exp) return;
+        const expiresAtMs = decoded.exp * 1000;
+        const nowMs = Date.now();
+        const msLeft = Math.max(0, expiresAtMs - nowMs);
+
+        // logout at exact expiry + small guard
+        logoutTimerRef.current = window.setTimeout(() => {
+          doLogout({ silent: true });
+        }, msLeft + 500);
+
+        // refresh 30s before expiry if a refreshToken exists
+        const refreshBeforeMs = 30_000;
+        if (localStorage.getItem("refreshToken") || refreshToken) {
+          const msToRefresh = Math.max(0, msLeft - refreshBeforeMs);
+          refreshTimerRef.current = window.setTimeout(async () => {
+            try {
+              await refreshAuthToken();
+            } catch {
+              // if refresh fails, expiry timer will handle logout
+            }
+          }, msToRefresh);
+        }
+      } catch (err) {
+        console.warn("scheduleTokenHandlers error:", err);
+      }
+    },
+    [clearTimers, refreshToken]
+  );
+
+  // refresh token implementation (calls /refresh on configured AUTH API)
+  const AUTH_API_BASE = (import.meta.env.VITE_API_AUTH_URL ?? import.meta.env.VITE_BASE_URL ?? "").replace(/\/$/, "");
+  const REFRESH_ENDPOINT = AUTH_API_BASE ? `${AUTH_API_BASE}/refresh` : "";
+
+  const refreshAuthToken = useCallback(async (): Promise<boolean> => {
+    if (!REFRESH_ENDPOINT) return false;
+    const rt = localStorage.getItem("refreshToken") ?? refreshToken;
+    if (!rt) return false;
+    try {
+      const res = await axios.post(REFRESH_ENDPOINT, { refreshToken: rt }, { headers: { "Content-Type": "application/json" } });
+      const data = res.data ?? {};
+      const newToken = data.token ?? data.accessToken ?? data.access_token ?? null;
+      const newRefresh = data.refreshToken ?? data.refresh ?? null;
+      const userFromResp = data.user ?? data.profile ?? null;
+
+      if (!newToken) return false;
+
+      localStorage.setItem("token", newToken);
+      setToken(newToken);
+
+      if (newRefresh) {
+        localStorage.setItem("refreshToken", newRefresh);
+        setRefreshToken(newRefresh);
+      }
+
+      if (userFromResp) {
+        localStorage.setItem("user", JSON.stringify(userFromResp));
+        setUser(userFromResp);
+      } else {
+        const parsed = parseTokenToUser(newToken);
+        if (parsed) {
+          localStorage.setItem("user", JSON.stringify(parsed));
+          setUser(parsed);
         }
       }
-    };
 
-    checkTokenExpiration();
-  }, [token]);
+      scheduleTokenHandlers(newToken);
+      return true;
+    } catch (err) {
+      console.warn("refreshAuthToken failed:", err);
+      localStorage.removeItem("refreshToken");
+      setRefreshToken(null);
+      return false;
+    }
+  }, [refreshToken, REFRESH_ENDPOINT, scheduleTokenHandlers]);
 
-  // Reset nếu gặp lỗi 401
+  // internal logout (silent optional)
+  const doLogout = useCallback(({ silent = false }: { silent?: boolean } = {}) => {
+    clearTimers();
+    setUser(null);
+    setToken(null);
+    setRefreshToken(null);
+    try {
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+    } catch {}
+    // optionally show notification if not silent (left intentionally blank)
+  }, [clearTimers]);
+
+  // exported logout
+  const logout = useCallback((opts?: { silent?: boolean }) => {
+    doLogout(opts ?? {});
+  }, [doLogout]);
+
+  // login accepts an object payload
+  const login = useCallback(
+    (payload: LoginPayload) => {
+      const { user: providedUser, token: t, refreshToken: rt } = payload;
+      if (!t) return;
+
+      // persist token and refresh token
+      try {
+        localStorage.setItem("token", t);
+        setToken(t);
+        if (rt) {
+          localStorage.setItem("refreshToken", rt);
+          setRefreshToken(rt);
+        } else {
+          localStorage.removeItem("refreshToken");
+          setRefreshToken(null);
+        }
+      } catch {}
+
+      // set user: prefer provided user, else parse from token
+      if (providedUser) {
+        const name = providedUser.name ?? [providedUser.firstName, providedUser.lastName].filter(Boolean).join(" ").trim();
+        const merged: User = { ...providedUser, name: name || providedUser.name };
+        try {
+          localStorage.setItem("user", JSON.stringify(merged));
+        } catch {}
+        setUser(merged);
+      } else {
+        const parsed = parseTokenToUser(t);
+        if (parsed) {
+          try {
+            localStorage.setItem("user", JSON.stringify(parsed));
+          } catch {}
+          setUser(parsed);
+        } else {
+          setUser(null);
+        }
+      }
+
+      // schedule expiry / refresh handlers
+      scheduleTokenHandlers(t);
+    },
+    [scheduleTokenHandlers]
+  );
+
+  // restore from storage on mount
+  useEffect(() => {
+    const storedToken = localStorage.getItem("token");
+    if (storedToken) {
+      setToken(storedToken);
+      const rawUser = tryParseJSON(localStorage.getItem("user"));
+      if (rawUser) setUser(rawUser);
+      else {
+        const parsed = parseTokenToUser(storedToken);
+        if (parsed) setUser(parsed);
+      }
+      scheduleTokenHandlers(storedToken);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // keep in sync on global 401s
   useEffect(() => {
     const handler = () => {
-      setUser(null);
-      setToken(null);
+      doLogout({ silent: true });
     };
     onUnauthorized(handler);
     return () => offUnauthorized(handler);
-  }, []);
+  }, [doLogout]);
 
-  const login = (userData: User, tokenData: string) => {
-    const name =
-      userData.name ||
-      [userData.firstName, userData.lastName].filter(Boolean).join(" ");
-    const updatedUser = { ...userData, name };
-    setUser(updatedUser);
-    setToken(tokenData);
-    localStorage.setItem("user", JSON.stringify(updatedUser));
-    localStorage.setItem("token", tokenData);
+  // cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      clearTimers();
+    };
+  }, [clearTimers]);
+
+  const isAuthenticated = Boolean(token);
+
+  const isAdmin = useCallback(() => {
+    if (!user) return false;
+    const r = user.role;
+    if (!r) return false;
+    if (Array.isArray(r)) return r.map(String).includes("admin");
+    return String(r).toLowerCase() === "admin";
+  }, [user]);
+
+  const hasRole = useCallback((role: string) => {
+    if (!user) return false;
+    const r = user.role;
+    if (!r) return false;
+    if (Array.isArray(r)) return r.map(String).includes(role);
+    return String(r).toLowerCase() === role.toLowerCase();
+  }, [user]);
+
+  const value: AuthContextType = {
+    user,
+    token,
+    refreshToken,
+    isAuthenticated,
+    login,
+    logout,
+    refreshAuthToken,
+    isAdmin,
+    hasRole,
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context)
+/* ------------- Hook ------------- */
+export const useAuth = (): AuthContextType => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
     throw new Error("useAuth must be used within an AuthProvider");
-  return context;
+  }
+  return ctx;
 };
+
+export default AuthProvider;
